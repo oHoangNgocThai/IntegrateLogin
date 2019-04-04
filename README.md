@@ -20,3 +20,7 @@ Integrate Login with Facebook, Twitter, Google
 # Login app with Twitter
 
 # Login app with Google
+
+* Hiện tại hầu hết các ứng dụng đều cho phép đăng nhập bằng Google hoặc Facebook, vì rất tiện lợi và không cần người dùng phải nhập thêm bất cứ thông tin gì vì đa số giờ đều có tài khoản Google hoặc Facebook.
+* Login theo hướng dẫn của Google đầy đủ ở [đây](https://developers.google.com/identity/sign-in/android/start-integrating)
+* 
