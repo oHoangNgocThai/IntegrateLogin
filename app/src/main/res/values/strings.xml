@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">IntegrateLogin</string>
+
+    <string name="facebook_app_id">357352578214231</string>
+    <string name="fb_login_protocol_scheme">fb357352578214231</string>
+    <string name="title_activity_facebook_login">FacebookLoginActivity</string>
 </resources>
