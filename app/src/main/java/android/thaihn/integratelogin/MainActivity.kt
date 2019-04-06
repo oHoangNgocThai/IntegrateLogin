@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.thaihn.integratelogin.databinding.ActivityMainBinding
 import android.thaihn.integratelogin.facebook.FacebookLoginActivity
+import android.thaihn.integratelogin.facebook.util.FacebookUtil
 import android.thaihn.integratelogin.google.GoogleLoginActivity
 
 class MainActivity : AppCompatActivity() {
@@ -27,5 +28,7 @@ class MainActivity : AppCompatActivity() {
         mainBinding.btnTwitter.setOnClickListener {
 
         }
+
+        FacebookUtil.getKeyStoreDebug(this)
     }
 }

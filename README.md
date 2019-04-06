@@ -7,6 +7,8 @@ Integrate Login with Facebook, Twitter, Google
 * Việc đăng nhập này dựa trên SDK của Facebook cung cấp cho chúng ta và tích hợp vào ứng dụng của mình.
 * Đăng nhập sử dụng Facebook được hướng dẫn chi tiết tại trang [facebook developer](https://developers.facebook.com/docs/facebook-login/android?locale=en)
 
+## Setting
+
 1. Đầu tiên là bạn phải có một ứng dụng có trên trang **developer facebook**, nếu chưa có thì hãy tạo mới một ứng dụng để tiến hành liên kết. Xem các ứng dụng đã có hoặc là tạo mới ứng dụng tại [đây](https://developers.facebook.com/apps/)
 2. Trọn bộ SDK của Facebook cung cấp cho developer ở [Facebook SDK for Android](https://developers.facebook.com/docs/android/componentsdks). Ở đây chúng ta sử dụng **Facebook Login SDK**, để sử dụng cần thêm dependency vào thư mục build.gradle.
 
@@ -46,7 +48,8 @@ Integrate Login with Facebook, Twitter, Google
 </activity>
 ```
 
-* Thêm package name và default class của ứng dụng của bạn vào phần 5 tại [đây](https://developers.facebook.com/docs/facebook-login/android?locale=en) để Facebook SDK nhận ra ứng dụng của bạn.
+* Thêm package name và default class của ứng dụng của bạn vào phần 5 tại [đây](https://developers.facebook.com/docs/facebook-login/android?locale=en) để Facebook SDK nhận ra ứng dụng của bạn. Default class sẽ phải chỉ đến chính xác package name mà Activity đó thực hiện login.
+
 * Sau đó thêm **Release Key Hashes** của ứng dụng lên trên ứng dụng mới tạo trên Facebook develop. Để lấy được keystore dev, sử dụng lệnh hoặc hàm để lấy ra:
 
     * Đối với Linux, sử dụng lệnh dưới đây để lấy ra key dev, những nền tảng khác xem tại [đây](https://medium.com/mindorks/generate-hash-key-for-facebook-and-sha-1-key-for-google-maps-in-android-studio-48d92e4f3c05)
@@ -80,6 +83,10 @@ Integrate Login with Facebook, Twitter, Google
     }
     ```
 
+* Bật chức năng **Single Sign On** cho ứng dụng của bạn trong phần FacebookLogin/QuickStart của Facebook developer.
+
+## Add Login with Facebook
+
 * Bạn có thể sử dụng App event để log lại các event của ứng dụng thông qua Facebook Android SDK. Event này có thể là 1 trong 14 event được xác định trước hoặc có thể tạo thêm những event mới trong ứng dụng của mình để theo dõi.
 * Để đăng lý **Logging App Activations** cho ứng dụng của bạn, nó có thể giúp cho bạn thống kê được tần xuất người click, người dùng, ... thông qua Facebook Analytics. Thêm việc đăng ký logging vào  bên trong **onCreate()** của class Application.
 
@@ -96,7 +103,7 @@ override fun onCreate() {
 logger.logPurchase(BigDecimal.valueOf(4.32), Currency.getInstance("USD"))
 ```
 
-* Thêm button **Login with Facebook** bên trong ứng dụng từ Facebook SDK. Nó là một thành phần nằm trong **LoginManager**.
+* Thêm button **Login with Facebook** bên trong ứng dụng từ Facebook SDK. Nó là một thành phần nằm trong class **LoginManager**.
 
 ```
 <com.facebook.login.widget.LoginButton
@@ -110,8 +117,163 @@ logger.logPurchase(BigDecimal.valueOf(4.32), Currency.getInstance("USD"))
             app:layout_constraintTop_toTopOf="parent" />
 ```
 
-* Đăng ký callback để nhận về kết quả khi login thành công hoặc thất bại.
+* Tạo đối tượng của **CallbackManager** để thực hiện việc nhận callback về đăng nhập.
 
+```
+mCallbackManager = CallbackManager.Factory.create()
+```
+
+* Thêm các quyền cần thiết khi bạn tiến hành login với tài khoản facebook vào button login có sẵn, ví dụ như **email**, **public-profile**. Xem thêm tại [đây](https://developers.facebook.com/docs/facebook-login/android/permissions).
+
+```
+facebookLoginBinding.loginButton.setReadPermissions(createPermission())
+
+private fun createPermission(): List<String> {
+    return arrayListOf(PERMISSION_EMAIL, PERMISSION_PUBLIC_PROFILE)
+}
+```
+
+* Đăng kí callback để nhận về sự kiện đăng nhập thành công hoặc thất bại, sử dụng phương thức **registerCallback()**.
+
+```
+facebookLoginBinding.loginButton.registerCallback(mCallbackManager, object : FacebookCallback<LoginResult> {
+    override fun onCancel() {
+        Log.d(TAG, "onCancel()")
+    }
+
+    override fun onError(error: FacebookException?) {
+        error?.printStackTrace()
+        Log.d(TAG, "Error code: ${error.hashCode()}")
+    }
+
+    override fun onSuccess(result: LoginResult?) {
+        Log.d(TAG, "onSuccess: ${result.toString()}")
+    }
+})
+```
+
+* Nếu sử dụng custom button thì sẽ sử dụng **LoginManager** để thực hiện nhận callback như sau.
+
+```
+LoginManager.getInstance().registerCallback(mCallbackManager, object : FacebookCallback<LoginResult> {
+    override fun onCancel() {
+        Log.d(TAG, "onCancel")
+    }
+
+    override fun onSuccess(result: LoginResult?) {
+        Log.d(TAG, "Login result: $result")
+    }
+
+    override fun onError(error: FacebookException?) {
+        error?.printStackTrace()
+        Log.d(TAG, "Error code: ${error.hashCode()}")
+    }
+})
+
+// Call when press button login
+LoginManager.getInstance().logInWithReadPermissions(this, createPermission())
+
+// Call when logout
+LoginManager.getInstance().logOut()
+```
+
+* Để nhận được kết quả đăng nhập, hãy lắng nghe ở phương thức **onActivityResult()** như sau:
+
+```
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    mCallbackManager.onActivityResult(requestCode, resultCode, data)
+    super.onActivityResult(requestCode, resultCode, data)
+}
+```
+
+* Để check trạng thái của người dùng có đăng nhập hay không, sử dụng **AccessToken.getCurrentAccessToken()** để kiểm tra.
+
+```
+private fun checkLoginStatus(): Boolean {
+        val accessToken = AccessToken.getCurrentAccessToken()
+        return accessToken != null && !accessToken.isExpired
+    }
+```
+
+* Cuối cùng lấy thông tin của người dùng qua đối tượng profile.
+
+```
+val user = Profile.getCurrentProfile()
+```
+
+## [Tracking Access Tokens and Profiles](https://developers.facebook.com/docs/facebook-login/android/accesstokens)
+
+* Nếu muốn ứng dụng của bạn giữ cập nhật với accessToken và profile, bạn có thể triển khai các class **AccessTokenTracker** và **ProfileTracker**.
+* Các phương thức này sẽ lắng nghe và gọi đến code của bạn khi có sự thay đổi, vì vậy cần phải gọi **stopTracking()** trong hàm **onDestroy()**.
+
+* Để theo dõi accessToken, thực hiện như sau:
+
+```
+@Override
+public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    FacebookSdk.sdkInitialize(this.getApplicationContext());
+    callbackManager = CallbackManager.Factory.create();
+
+    accessTokenTracker = new AccessTokenTracker() {
+        @Override
+        protected void onCurrentAccessTokenChanged(
+            AccessToken oldAccessToken,
+            AccessToken currentAccessToken) {
+                // Set the access token using 
+                // currentAccessToken when it's loaded or set.
+        }
+    };
+    // If the access token is available already assign it.
+    accessToken = AccessToken.getCurrentAccessToken();
+}
+
+@Override
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+    callbackManager.onActivityResult(requestCode, resultCode, data);
+}
+
+@Override
+public void onDestroy() {
+    super.onDestroy();
+    accessTokenTracker.stopTracking();
+}
+```
+
+* Để thực hiện theo dõi profile nếu có thay đổi như sau:
+
+```
+@Override
+public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    FacebookSdk.sdkInitialize(this.getApplicationContext());
+    callbackManager = CallbackManager.Factory.create();
+
+    profileTracker = new ProfileTracker() {
+        @Override
+        protected void onCurrentProfileChanged(
+                Profile oldProfile,
+                Profile currentProfile) {
+            // App code
+        }
+    };
+}
+
+@Override
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+    callbackManager.onActivityResult(requestCode, resultCode, data);
+}
+
+@Override
+public void onDestroy() {
+    super.onDestroy();
+    profileTracker.stopTracking();
+}
+```
 
 # Login app with Twitter
 
