@@ -277,6 +277,139 @@ public void onDestroy() {
 
 # Login app with Twitter
 
+## Setup and Login Basic
+
+* Trước hết đăng nhập tài khoản Twitter ở [đây](https://developer.twitter.com/en/apps) và tạo thêm 1 app cho tài khoản.
+* Điền đầy đủ các trường trong **Application Details**, riêng trường **Callback URLs** thì nên điền **twittersdk://**. Điều này là bắt buộc nếu muốn xác thực qua Twitter.
+* Sau khi tạo được app trên Twitter, quay trở về project và thêm vào dependency cần thiết.
+
+```
+implementation 'com.twitter.sdk.android:twitter:3.1.0'
+implementation 'com.twitter.sdk.android:twitter-core:3.1.1'
+implementation 'com.twitter.sdk.android:twitter-mopub:3.1.0'
+```
+
+* Cài đặt config của Twitter để sử dụng trong ứng dụng, cài đặt trước khi sử dụng(thường là trong Application).
+
+```
+val config = TwitterConfig.Builder(this)
+    .logger(DefaultLogger(Log.DEBUG))
+    .twitterAuthConfig(TwitterAuthConfig(
+        resources.getString(R.string.consumer_api_key),
+        resources.getString(R.string.consumner_api_key_secret)))
+    .debug(true)
+    .build()
+
+Twitter.initialize(config)
+```
+
+* Thêm button login của Twitter vào giao diện như sau:
+
+```
+<com.twitter.sdk.android.core.identity.TwitterLoginButton
+    android:id="@+id/login_button"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent" />
+```
+
+* Tạo callback để thực hiện login, sử dụng **Callback** và nhận về giá trị **TwitterSession** của phiên login này.
+
+```
+login_button.callback = object : Callback<TwitterSession>() {
+
+    override fun failure(exception: TwitterException?) {
+        exception?.printStackTrace()
+        Toast.makeText(applicationContext, exception?.localizedMessage, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun success(result: Result<TwitterSession>?) {
+        Log.d(TAG, "success:result:$result")
+        result?.let {
+            handleResult(it)
+        }
+    }
+}
+```
+
+* Nhận dữ liệu login trả về bên trong hàm **onActivityResult()** sử dụng login_button có sẵn.
+
+```
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    login_button.onActivityResult(requestCode, resultCode, data)
+}
+```
+
+* Nếu nhận dữ liệu ở Fragment để xử lý, có thể sử dụng cách sau bên trong hàm **onActivityResult**
+
+```
+    // Pass the activity result to the fragment, which will then pass the result to the login
+    // button.
+    Fragment fragment = getFragmentManager().findFragmentById(R.id.your_fragment_id);
+    if (fragment != null) {
+        fragment.onActivityResult(requestCode, resultCode, data);
+    }
+```
+
+* Lấy ra dữ liệu khi đã login thành công, sử dụng đối tượng của TwitterSession.
+
+```
+result.data?.let {
+    TwitterCore.getInstance().getApiClient(it).accountService
+        .verifyCredentials(true, true, false)
+        .enqueue(object : Callback<User>() {
+            override fun success(result: Result<User>) {
+                val name = result.data.name
+                val userName = result.data.screenName
+                val profileImageUrl = result.data.profileImageUrl.replace("_normal", "")
+
+                tv_notification.text = "name:$name \n userName:$userName \n profileImageUrl:$profileImageUrl"
+            }
+
+            override fun failure(exception: TwitterException) {
+                Toast.makeText(applicationContext, exception.localizedMessage, Toast.LENGTH_SHORT).show()
+            }
+    })
+}
+```
+
+## Login Custom
+
+* Chúng ta có thể thêm một button bất kì và thực hiện login với twitter sử dụng **TwitterAuthClient**.
+
+```
+mTwitterAuthClient.authorize(this, object : Callback<TwitterSession>() {
+    override fun failure(exception: TwitterException?) {
+    }
+
+    override fun success(result: Result<TwitterSession>?) {
+    }
+}
+```
+
+* Sử dụng TwitterAuthClient để đăng kí nhận phản hồi trong hàm **onActivityResult()**.
+
+```
+mTwitterAuthClient.onActivityResult(requestCode, resultCode, data)
+```
+
+* Để check xem user đã login vào Twitter chưa, sử dụng **TwitterCore** để check xem có **activeSession** hay không và có token trả về hay không.
+
+```
+val session = TwitterCore.getInstance().sessionManager.activeSession
+val authorToken = session?.authToken
+val token = authorToken?.token
+val secret = authorToken?.secret
+```
+
+* Để logout user khỏi Twitter, sử dụng **TwitterCore** để clear session của user login hiện tại. 
+
+```
+TwitterCore.getInstance().sessionManager.clearActiveSession()
+```
+
 # Login app with Google
 
 * Hiện tại hầu hết các ứng dụng đều cho phép đăng nhập bằng Google hoặc Facebook, vì rất tiện lợi và không cần người dùng phải nhập thêm bất cứ thông tin gì vì đa số giờ đều có tài khoản Google hoặc Facebook.
