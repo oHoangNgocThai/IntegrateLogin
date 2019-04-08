@@ -1,6 +1,63 @@
 # Integrate Login
 Integrate Login with Facebook, Twitter, Google
 
+# OAuth2
+
+* OAuth2 là một framework ủy quyền cho các ứng dụng có quyền truy cập hạn chế vào tài khoản trên dịch vụ HTTP, chẳng hạn như Facebook, Github, DigitalOcean. Nó hoạt dodonjog bằng cách ủy quyền xác thực người dùng cho bên thứ 3. Nó cung cấp được cho các ứng dụng web, desktop, mobile.
+
+* OAuth định nghĩa 4 role: 
+
+    * **Resouce Owner**: Là người dùng cho phép ứng dụng truy cập vào tài khoản của họ. Quyền truy cập này của ứng dụng vào tài khoản người dùng bị giới hạn chỉ trong phạm vi ủy quyền.
+    * **Client**: Là ứng dụng muốn truy cập vào tài khoản của người dùng. Trước khi làm như vậy phải được người dùng ủy quyền và API xác thực trước.
+    * **Resource Server**: Là nơi lưu trữ các tài khoản người dùng được bảo vệ.
+    * **Authorization Server**: Phục vụ việc xác minh danh tính người dùng sau đó cấp mã thông báo truy cập cho các ứng dụng.
+
+* Luồng giao thức dưới dạng trừu tượng dưới đây sẽ mô tả cách OAuth hoạt động:
+
+![](https://assets.digitalocean.com/articles/oauth/abstract_flow.png)
+
+* Trước khi sử dụng OAuth cho ứng dụng, bạn phải đăng ký ứng dụng của mình với nhà cung cấp dịch vụ như Facebook, Google, Twitter, ... bằng cách sử dụng SDK hoặc là API trên trang web của dịch vụ. 
+
+* Khi đăng nhập thành công, dịch vụ sẽ cung cấp cho bạn **client credentials** dưới dạng định danh của một **client identifier** và một **client secret**. Trong đó **client indentifier** được hiển thị công khai, được sử dụng bởi API để xác định ứng dụng và xây dựng các URL ủy quyền. Còn **client secret** phải được giữ bí mật giữa app và API.
+
+* Trong giao thức ở trên, 4 bước đầu tiên đã dành cho việc cấp và nhận ủy quyền. OAuth2 định nghĩa 4 loại cấp ủy quyền trong các trường hợp khác nhau:
+
+    * **Authorization Code**: Sử dụng với các ứng dụng phía server
+    * **Implicit**: Được sử dụng với mobile hoặc web app.
+    * **Resource Owner Password Credentials**: Được sử dụng cho các ứng dụng đáng tin cậy, chẳng hạn như các ứng dụng do chính dịch vụ sở hữu.
+    * **Client Credentials**: Sử dụng để truy cập các API của ứng dụng.
+    
+*  Cấp quyền theo dạng **Authorization Code** được sử dụng nhiều nhất vì nó tối ưu cho các ứng dụng phía server, nơi source code không được công khai và bảo mật có thể được duy trì. Đây là luồng dựa trên chuyển hướng, nên ứng dụng phải có khả năng tương tác với người dùng. 
+
+    * Step 1: Người dùng được cung cấp một liên kết **authorization code** như sau:
+    
+    ```
+    https://cloud.digitalocean.com/v1/oauth/authorize?response_type=code&client_id=CLIENT_ID&redirect_uri=CALLBACK_URL&scope=read
+    ```
+    * Khi người dùng click vào link, trước tiên phải đăng nhập vào dịch vụ để xác minh được danh tính của họ. Sau đó họ sẽ được nhắc nhở xem có cho phép hay từ chối quyền của ứng dụng.
+    * Nếu người dùng cho phép, dịch vụ sẽ chuyển hướng ứng dụng đến một callback nào đó và trả về ứng dụng.
+    * Ứng dụng tiếp tục request token từ API, bằng các chuyển **authorization code** cùng với các xác thực liên quan đến API.
+    * Tiếp theo ứng dụng nhận về **Access Token** từ server nếu việc xác thực thành công.
+
+* Cấp quyền theo dạng **Implicit** được sử dụng cho mobile và web vì nơi bảo mật client không được đảm bảo.:
+
+    * Loại cấp quyền ngầm này cùng là một kiểu chuyển hướng nhưng **access token** được cung cấp cho người dùng để chuyển tiếp vì vậy sẽ được hiển thị cho người dùng thấy.
+    * Luồng này không xác thực danh tính của ứng dụng và dựa vào URI chuyển hướng để sử dụng.
+    * Loai này không hỗ trợ **refresh token**.
+    * Luồng này sẽ hoạt động như sau: Người dùng được yêu cầu ủy quyền cho ứng dụng, sau đó máy chủ ủy quyền chuyển access token truy cập trở lại người dùng.
+
+* Cấp quyền dạng **Resource Owner Password Credentials** là người dùng sẽ cung cấp thông tin đăng nhập của họ trực tiếp cho ứng dụng để nhận về mã accessToken.
+
+    * Loại này chỉ nên được bật khi các luồng khác không khả thi, Ngoài ra nó nên được sử dụng trong trường hợp tin cậy của người dùng.
+    * Luồng này sẽ xảy ra sau khi người dùng cung cấp thông tin đăng nhập của họ, ứng dụng sẽ yêu cầu access token từ máy chủ.
+
+* Cấp quyền dạng **Client Credentials** cung cấp cho ứng dụng một cách để truy cập vào tài khoản dịch vụ của chính nó.
+
+    * Ví dụ như khi đăng nhập xong muốn truy cập vào một số các chức năng khác hoặc lấy ra các thông tin trong cùng một dịch vụ.
+    * Luồng này sẽ hoạt động như sau: Người dùng yêu cầu access token bằng cách gửi đi **credential**, **client id**, **client secret** của client đến máy chủ ủy quyền. Nếu xác thực thành công thì dịch vụ sẽ trả lại mã thông báo và người dùng có quyền sử dụng tài khoản của dịch vụ. 
+
+* Luồng của **refresh token**: Sau khi access token hết hạn, sử dụng nó để gửi request sẽ trả về lỗi **Invalid Token Error**. Tại thời điểm này, nếu có refresh token khi access token ban đầu được phát hành, có thể sử dụng để yêu cầu một access token khác.
+
 # Login app with Facebook
 
 * Hiện nay rất nhiều các ứng dụng đã tích hợp việc đăng ký tài khoản người dùng thông qua tài khoản Facebook. Bởi bây giờ đa số ai cũng sẽ có cho mình một tài khoản Facebook.
@@ -275,6 +332,38 @@ public void onDestroy() {
 }
 ```
 
+## Connect to FireBase Authentication
+
+* Nếu muốn sử dụng token của Facebook để đăng nhập FireBase Authentication, hãy sử dụng **FacebookAuthProvider** để lấy ra đối tượng **AuthCredential**. Sau đó sử dụng nó để đăng ký user trên FireBase Auth.
+
+```
+private void handleFacebookAccessToken(AccessToken token) {
+    Log.d(TAG, "handleFacebookAccessToken:" + token);
+
+    AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
+    mAuth.signInWithCredential(credential)
+            .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                @Override
+                public void onComplete(@NonNull Task<AuthResult> task) {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        Log.d(TAG, "signInWithCredential:success");
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        updateUI(user);
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInWithCredential:failure", task.getException());
+                        Toast.makeText(FacebookLoginActivity.this, "Authentication failed.",
+                                Toast.LENGTH_SHORT).show();
+                        updateUI(null);
+                    }
+
+                    // ...
+                }
+            });
+}
+```
+
 # Login app with Twitter
 
 ## Setup and Login Basic
@@ -408,6 +497,40 @@ val secret = authorToken?.secret
 
 ```
 TwitterCore.getInstance().sessionManager.clearActiveSession()
+```
+
+## Connect to FireBase Authentication
+
+* Có thể sau khi sign-in với Twitter, nếu có nhu cầu sử dụng FireBase Authentication để đăng ký luôn tài khoản trên FireBase sử dụng cho ứng dụng.
+
+```
+private void handleTwitterSession(TwitterSession session) {
+
+    AuthCredential credential = TwitterAuthProvider.getCredential(
+            session.getAuthToken().token,
+            session.getAuthToken().secret);
+
+    mAuth.signInWithCredential(credential)
+            .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                @Override
+                public void onComplete(@NonNull Task<AuthResult> task) {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        Log.d(TAG, "signInWithCredential:success");
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        updateUI(user);
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInWithCredential:failure", task.getException());
+                        Toast.makeText(TwitterLoginActivity.this, "Authentication failed.",
+                                Toast.LENGTH_SHORT).show();
+                        updateUI(null);
+                    }
+
+                    // ...
+                }
+            });
+}
 ```
 
 # Login app with Google
